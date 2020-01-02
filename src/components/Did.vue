@@ -1,13 +1,19 @@
 <template>
-  <el-row class="didContainer">
+  <el-row class="didContainer" v-loading="floading" element-loading-background="rgba(240, 240, 240, 0.95)" element-loading-text="Decrypting Keystore...">
     <el-col :span="12" :offset="6">
-      <el-button type="primary" class="getKeystoreBtn" @click="chooseKeystore()">Get Keystore</el-button>
-      <input type="file" ref="fileSelect" style="display: none" v-on:change="handleKeystoreSelect()">
-      <el-input placeholder="Enter File DID" v-model="did"></el-input>
-      <div class="errorContainer">{{ errorMsg }}</div>
-      <div class="btnContainer">
-        <el-button class="secondaryBtn">Verify</el-button>
-        <el-button type="primary" icon="el-icon-download" class="downloadBtn">Download</el-button>
+      <div class="" v-if="!loggedin">
+        <div class="headerText">Enter an ethereum keystore to get started</div>
+        <el-button type="primary" class="getKeystoreBtn" @click="chooseKeystore()">Load Keystore</el-button>
+        <input type="file" ref="fileSelect" style="display: none" v-on:change="handleKeystoreSelect()">
+      </div>
+      <div v-else>
+        <div class="headerText">Enter a file DID to verify permission and download</div>
+        <el-input placeholder="Enter File DID" v-model="did" class="didInput"></el-input>
+        <div class="errorContainer">{{ errorMsg }}</div>
+        <div class="btnContainer">
+          <el-button class="secondaryBtn">Verify Permission</el-button>
+          <el-button type="primary" icon="el-icon-download" class="downloadBtn">Download File</el-button>
+        </div>
       </div>
     </el-col>
   </el-row>
@@ -15,6 +21,8 @@
 
 <script>
 import { ethers } from 'ethers'
+const Newfang = window.newfang.default
+console.log(Newfang)
 
 export default {
   name: 'did',
@@ -24,7 +32,9 @@ export default {
     return {
       did: '',
       errorMsg: '',
-      keystore: ''
+      keystore: '',
+      floading: false,
+      loggedin: false
     }
   },
   methods: {
@@ -51,20 +61,38 @@ export default {
         cancelButtonText: 'Cancel',
         inputType: 'password'
       }).then(({ value }) => {
-        this.loading = true
+        this.floading = true
         this.checkPassword(value)
       }).catch(() => {
       })
     },
 
     async checkPassword(pass) {
-      let wallet = await ethers.Wallet.fromEncryptedJson(this.keystore, pass)
-      // eslint-disable-next-line no-console
-      console.log("w", wallet)
+      let wallet = null
+      try {
+        wallet = await ethers.Wallet.fromEncryptedJson(this.keystore, pass)
+        console.log(wallet)
+        this.floading = false
+        localStorage.setItem('pvt_key', wallet.privateKey)
+        localStorage.setItem('addr', wallet.address)
+        this.loggedin = true
+        this.$root.$emit("loggedin")
+      }
+      catch(error) {
+        this.floading = false
+        this.$message.error('Invalid password or keystore. Try again')
+        this.getPassword()
+      }
     }
   },
   mounted() {
-
+    if(localStorage.getItem('pvt_key')) {
+      this.loggedin = true
+    }
+    this.$root.$on("loggedout", () => {
+      this.keystore = ''
+      this.loggedin = false
+    })
   }
 }
 </script>
@@ -73,7 +101,14 @@ export default {
 <style scoped>
 
 .didContainer {
-  margin: 30px;
+  padding-top: 30px;
+  height: calc(100vh - 50px);
+}
+
+.headerText {
+  font-size: 40px;
+  font-weight: 200;
+  padding: 30px;
 }
 
 .errorContainer {
@@ -88,5 +123,10 @@ export default {
 
 .btnContainer {
   text-align: right;
+}
+
+.didInput {
+  height: 48px;
+  font-size: 12px;
 }
 </style>

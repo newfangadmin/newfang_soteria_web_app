@@ -4,8 +4,12 @@
       <el-col :span="2" class="logoContainer">
         <img class="logo" src="~@/assets/horizontal_white.png" />
       </el-col>
-      <el-col :span="8" :offset="14">
-        
+      <el-col :span="8" :offset="12" v-if="loggedin" class="ethAddrContainer">
+        <span class="ethAddr">{{ addr }}</span>
+        <i class="el-icon-copy-document copyBtn" @click="copyAddr()"></i>
+      </el-col>
+      <el-col :span="2" v-if="loggedin">
+        <el-button class="secondaryBtn logoutBtn" @click="logout()">Logout</el-button>
       </el-col>
     </el-row>
   </div>
@@ -16,19 +20,44 @@ export default {
   name: 'navbar',
   data() {
     return {
-
+      loggedin: false,
+      addr: ''
     }
   },
   methods: {
+    logout() {
+      localStorage.clear()
+      this.loggedin = false
+      this.addr = ''
+      this.$root.$emit("loggedout")
+    },
 
+    copyAddr() {
+      navigator.clipboard.writeText(this.addr).then(() => {
+        this.$message({
+          message: 'Address copied to clipboard.',
+          type: 'success'
+        })
+      }, () => {
+        this.$message.error('Copy failed. Try again')
+      })
+    }
   },
   mounted() {
-    // eslint-disable-next-line no-console
+    this.$root.$on("loggedin", () => {
+      this.addr = localStorage.getItem('addr')
+      this.loggedin = true
+    })
+
+    this.addr = localStorage.getItem('addr')
+    if(this.addr) {
+      this.loggedin = true
+    }
   }
 }
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
   .navbar {
     height: 50px;
     overflow: hidden;
@@ -47,5 +76,30 @@ export default {
     line-height: 50px;
     font-size: 14px;
     vertical-align: middle;
+  }
+
+  .ethAddrContainer {
+    text-align: right;
+  }
+
+  .ethAddr {
+    line-height: 50px;
+    text-align: right;
+    font-weight: 600;
+    margin-right: 6px;
+  }
+
+  .logoutBtn {
+    line-height: 26px;
+  }
+
+  .copyBtn {
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .copyBtn:hover {
+    color: #ff7500;
   }
 </style>
