@@ -12,7 +12,7 @@
         <div class="errorContainer">{{ errorMsg }}</div>
         <div class="btnContainer">
           <el-button class="secondaryBtn">Verify Permission</el-button>
-          <el-button type="primary" icon="el-icon-download" class="downloadBtn">Download File</el-button>
+          <el-button type="primary" icon="el-icon-download" class="downloadBtn" @click="handleDownload()">Download File</el-button>
         </div>
       </div>
     </el-col>
@@ -22,7 +22,8 @@
 <script>
 import { ethers } from 'ethers'
 const Newfang = window.newfang.default
-console.log(Newfang)
+const { Downloader } = Newfang
+const wallet = new ethers.Wallet("B2F6ACDF8D47EDD53A38D573325DAA9D2418A6FB1B141DB7A4AFAFB985E6BA49")
 
 export default {
   name: 'did',
@@ -74,6 +75,9 @@ export default {
         console.log(wallet)
         this.floading = false
         localStorage.setItem('pvt_key', wallet.privateKey)
+        const pub_key = wallet.signingKey.publicKey.split('0x')[1]
+        console.log(pub_key)
+        localStorage.setItem('pub_key', pub_key)
         localStorage.setItem('addr', wallet.address)
         this.loggedin = true
         this.$root.$emit("loggedin")
@@ -83,6 +87,32 @@ export default {
         this.$message.error('Invalid password or keystore. Try again')
         this.getPassword()
       }
+    },
+
+    handleDownload() {
+      const downloader = new Downloader({did: this.did }, {
+          type: "chunked",
+          useWorkers: true,
+          blockchain: {
+              provider: ethers,
+              wallet
+          }
+      })
+
+      const start = Date.now()
+      downloader.setIdentity(localStorage.getItem('pvt_key'))
+      downloader.on("download_progress", (percentage) => {
+          console.log("download progress: ", percentage + "%");
+      })
+      downloader.on("download_complete", () => {
+          const end = Date.now();
+          console.log(`Process took: ${(end - start) / 1000}s`)
+      })
+      downloader.on("error", (e) => {
+          console.log(e);
+      })
+
+      downloader.start_download('test.txt')
     }
   },
   mounted() {
